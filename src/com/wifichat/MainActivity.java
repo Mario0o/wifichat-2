@@ -1,13 +1,18 @@
 package com.wifichat;
 
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.List;
+import java.security.cert.X509Certificate;
 
 import com.wifichat.connection.Callback;
 import com.wifichat.connection.ChatConnection;
 import com.wifichat.connection.NsdHelper;
 import com.wifichat.data.User;
 import com.wifichat.screens.adapters.PeopleAdapter;
+import com.wifichat.utils.SSLUtils;
 import com.wifichat.utils.Utils;
 
 import android.net.nsd.NsdServiceInfo;
@@ -28,6 +33,7 @@ import android.widget.TextView;
 public class MainActivity extends Activity {
 	public static final String PREFS_NAME = "Preferences";
 	public static final String PREFS_USER_NAME = "username";
+	public static final String ALIAS_NAME = "key";
 	
 	private static final String TAG = "MainActivity";
 	private MainActivity mActivity;
@@ -43,8 +49,7 @@ public class MainActivity extends Activity {
 		
 		mActivity = this;
 		
-		SharedPreferences settings = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-		String username = settings.getString(PREFS_USER_NAME, null);
+		String username = getUsername();
 		// ask for username if not available
 		if (username == null) {
 			askUsername();
@@ -52,6 +57,29 @@ public class MainActivity extends Activity {
 		} else {
 			new User(username);
 			initialize();
+		}
+	}
+	
+	private String getUsername() {
+		/*SharedPreferences settings = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+		String username = settings.getString(PREFS_USER_NAME, null);*/
+		
+		try {
+			KeyStore keyStore = SSLUtils.loadClientKeystore(this);
+			
+			String dn = ((X509Certificate)keyStore.getCertificate(ALIAS_NAME)).getSubjectDN().getName();
+			Log.d(TAG, "DN: " + dn);
+			String[] split = dn.split(",");
+			String username = null;
+			for (String x : split) {
+			    if (x.contains("CN=")) {
+			        username = x.substring(3);
+			    }
+			}
+			return username;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 
